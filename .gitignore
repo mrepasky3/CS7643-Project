@@ -1,4 +1,3 @@
-*.ipynb
 data
 *.gz
 __pycache__
