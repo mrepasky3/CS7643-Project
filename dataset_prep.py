@@ -32,12 +32,18 @@ class SetsToy:
 	product_task():
 		Returns training and testing data and labels for product of two largest digits task.
 	"""
-	def __init__(self,seed=None):
+	def __init__(self,max_size=None,fixed_size=False,seed=None):
 		"""
 		Generates tensor of random integers and partitions into sets.
 
 		Parameters
 		----------
+			max_size : int
+				maximum size of a set, if None default
+				to random upper bound on set size
+			fixed_size: bool
+				if True, each set has the same
+				number of elements
 			seed : int
 				random seed for reproducibility
 		"""
@@ -47,8 +53,22 @@ class SetsToy:
 		self.train_data = torch.randint(10,(60000,))
 		self.test_data = torch.randint(10,(10000,))
 
+		if max_size:
+			self.upper_bound = max_size
+		else:
+			self.upper_bound = int(torch.randint(5,20,(1,)))
+
+		self.fixed_size = fixed_size
+		if self.fixed_size:
+			self.lower_bound = self.upper_bound
+		else:
+			self.lower_bound = 2
+
 		# randomly determine the index range for each set
-		random_idx = torch.randint(2,10,(self.train_data.shape[0]//2,))
+		if self.fixed_size:
+			random_idx = torch.ones((self.train_data.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.train_data.shape[0]//2,))
 		set_idx = torch.cumsum(random_idx,dim=0)
 		set_idx = set_idx[set_idx < self.train_data.shape[0]]
 
@@ -63,7 +83,10 @@ class SetsToy:
 		    self.set_bounds[i+1] = torch.tensor([set_idx[i],set_idx[i+1]])
 
 		# randomly determine the index range for each test set
-		test_random_idx = torch.randint(2,10,(self.test_data.shape[0]//2,))
+		if self.fixed_size:
+			test_random_idx = torch.ones((self.test_data.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			test_random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.test_data.shape[0]//2,))
 		test_set_idx = torch.cumsum(test_random_idx,dim=0)
 		test_set_idx = test_set_idx[test_set_idx < self.test_data.shape[0]]
 
@@ -271,12 +294,18 @@ class SetsMNIST:
 	product_task():
 		Returns training and testing data and labels for product of two largest digits task.
 	"""
-	def __init__(self,seed=None):
+	def __init__(self,max_size=None,fixed_size=False,seed=None):
 		"""
 		Loads the data from MNIST, randomly shuffles, and generates set boundaries.
 
 		Parameters
 		----------
+			max_size : int
+				maximum size of a set, if None default
+				to random upper bound on set size
+			fixed_size: bool
+				if True, each set has the same
+				number of elements
 			seed : int
 				random seed for reproducibility
 		"""
@@ -294,8 +323,22 @@ class SetsMNIST:
 		self.train_data_shuffled = self.train_data[shuffled_idx]
 		self.train_labels_shuffled = self.train_labels[shuffled_idx]
 
+		if max_size:
+			self.upper_bound = max_size
+		else:
+			self.upper_bound = int(torch.randint(5,20,(1,)))
+
+		self.fixed_size = fixed_size
+		if self.fixed_size:
+			self.lower_bound = self.upper_bound
+		else:
+			self.lower_bound = 2
+
 		# randomly determine the index range for each set
-		random_idx = torch.randint(2,10,(self.train_data_shuffled.shape[0]//2,))
+		if self.fixed_size:
+			random_idx = torch.ones((self.train_data_shuffled.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.train_data_shuffled.shape[0]//2,))
 		set_idx = torch.cumsum(random_idx,dim=0)
 		set_idx = set_idx[set_idx < self.train_data_shuffled.shape[0]]
 
@@ -314,7 +357,10 @@ class SetsMNIST:
 		self.test_labels_shuffled = self.test_labels[test_shuffled_idx]
 
 		# randomly determine the index range for each test set
-		test_random_idx = torch.randint(2,10,(self.test_data_shuffled.shape[0]//2,))
+		if self.fixed_size:
+			test_random_idx = torch.ones((self.test_data_shuffled.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			test_random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.test_data_shuffled.shape[0]//2,))
 		test_set_idx = torch.cumsum(test_random_idx,dim=0)
 		test_set_idx = test_set_idx[test_set_idx < self.test_data_shuffled.shape[0]]
 
@@ -516,12 +562,18 @@ class SetsOmniglot:
 	unique_task():
 		Returns training and testing data and labels for unique symbols task.
 	"""
-	def __init__(self,seed=None):
+	def __init__(self,max_size=None,fixed_size=False,seed=None):
 		"""
 		Loads the data from Omniglot, randomly shuffles, and generates set boundaries.
 
 		Parameters
 		----------
+			max_size : int
+				maximum size of a set, if None default
+				to random upper bound on set size
+			fixed_size: bool
+				if True, each set has the same
+				number of elements
 			seed : int
 				random seed for reproducibility
 		"""
@@ -541,8 +593,22 @@ class SetsOmniglot:
 	                                          shuffle=True)
 		self.test_data, self.test_labels = next(iter(data_loader))
 
+		if max_size:
+			self.upper_bound = max_size
+		else:
+			self.upper_bound = int(torch.randint(40,60,(1,)))
+
+		self.fixed_size = fixed_size
+		if self.fixed_size:
+			self.lower_bound = self.upper_bound
+		else:
+			self.lower_bound = 20
+
 		# randomly determine the index range for each set
-		random_idx = torch.randint(20,50,(self.train_data.shape[0]//20,))
+		if self.fixed_size:
+			random_idx = torch.ones((self.train_data.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.train_data.shape[0]//20,))
 		set_idx = torch.cumsum(random_idx,dim=0)
 		set_idx = set_idx[set_idx < self.train_data.shape[0]]
 
@@ -557,7 +623,10 @@ class SetsOmniglot:
 		    self.set_bounds[i+1] = torch.tensor([set_idx[i],set_idx[i+1]])
 
 		# randomly determine the index range for each test set
-		test_random_idx = torch.randint(20,50,(self.test_data.shape[0]//20,))
+		if self.fixed_size:
+			test_random_idx = torch.ones((self.test_data.shape[0],),dtype=torch.int) * self.upper_bound
+		else:
+			test_random_idx = torch.randint(self.lower_bound,self.upper_bound,(self.test_data.shape[0]//20,))
 		test_set_idx = torch.cumsum(test_random_idx,dim=0)
 		test_set_idx = test_set_idx[test_set_idx < self.test_data.shape[0]]
 
