@@ -7,7 +7,7 @@ Created on Thu Nov 18 11:06:23 2021
 import torch
 from random import shuffle
 
-def process_dataset(sets, labels,max_size=9):
+def process_dataset(sets, labels,max_size=9,source="MNIST"):
     ''' Sets up data set (forms them with equal sizes and appropriate masks)
     '''
     _,h,w = sets[0].shape
@@ -17,8 +17,10 @@ def process_dataset(sets, labels,max_size=9):
     outs = torch.zeros(len(sets),1, dtype=torch.float32)
     
     for i in range(len(sets)):
-        
-        x = sets[i].unsqueeze(dim=1).float()/255
+        if source == "MNIST":
+            x = sets[i].unsqueeze(dim=1).float()/255
+        elif source == "OMNI":
+            x = sets[i].unsqueeze(dim=1).float()
         n = x.shape[0]
         data[i, :n, :, :, :] = x
         masks[i, :n] = 1.

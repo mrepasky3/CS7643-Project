@@ -660,14 +660,14 @@ class SetsOmniglot:
 		train_sets = []
 		train_targets = torch.zeros(self.set_bounds.shape[0],dtype=torch.int)
 		for i in range(self.set_bounds.shape[0]):
-			train_sets.append(self.train_data[self.set_bounds[i][0]:self.set_bounds[i][1]])
+			train_sets.append(self.train_data[self.set_bounds[i][0]:self.set_bounds[i][1]].squeeze())
 			temp_labels = self.train_labels[self.set_bounds[i][0]:self.set_bounds[i][1]]
 			train_targets[i] = len(temp_labels.unique())
 
 		test_sets = []
 		test_targets = torch.zeros(self.test_set_bounds.shape[0],dtype=torch.int)
 		for i in range(self.test_set_bounds.shape[0]):
-			test_sets.append(self.test_data[self.test_set_bounds[i][0]:self.test_set_bounds[i][1]])
+			test_sets.append(self.test_data[self.test_set_bounds[i][0]:self.test_set_bounds[i][1]].squeeze())
 			temp_labels = self.test_labels[self.test_set_bounds[i][0]:self.test_set_bounds[i][1]]
 			test_targets[i] = len(temp_labels.unique())
 
