@@ -21,7 +21,7 @@ parser.add_argument('--fixed_size', action='store_true')
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--weight_decay', type=float, default=1e-6)
 parser.add_argument('--batch_size', type=int, default=200)
-parser.add_argument('--epochs', type=int, default=10)
+parser.add_argument('--epochs', type=int, default=50)
 parser.add_argument('--seed', type=int, default=0)
 
 parser.add_argument('--experiment_type', type=str, choices=["simple","else"])
@@ -92,6 +92,9 @@ class Experimenter:
 			seed : int
 				random seed for reproducibility
 		"""
+
+		self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 		if seed is not None:
 			torch.manual_seed(seed)
 
@@ -110,13 +113,13 @@ class Experimenter:
 			self.dataset = SetsOmniglot(max_size=max_size, fixed_size=fixed_size)
 			entity_size = torch.tensor([1,105,105])
 		
-		self.LSTM_network = ImageLSTMNetwork(entity_size=entity_size)
+		self.LSTM_network = ImageLSTMNetwork(entity_size=entity_size).to(self.device)
 		self.LSTM_optim = torch.optim.Adam(self.LSTM_network.parameters(), lr=lr, weight_decay=weight_decay)
 
-		self.deepsets_network = ImageDeepSetNetwork(entity_size=entity_size)
+		self.deepsets_network = ImageDeepSetNetwork(entity_size=entity_size).to(self.device)
 		self.deepsets_optim = torch.optim.Adam(self.deepsets_network.parameters(), lr=lr, weight_decay=weight_decay)
 
-		self.attention_network = ImageAttentionNetwork(entity_size=entity_size)
+		self.attention_network = ImageAttentionNetwork(entity_size=entity_size).to(self.device)
 		self.attention_optim = torch.optim.Adam(self.attention_network.parameters(), lr=lr, weight_decay=weight_decay)
 
 
@@ -247,7 +250,14 @@ class Experimenter:
 			train_sets, train_labels, test_sets, test_labels = self.dataset.unique_task()
 
 		data, masks, outs = utils.process_dataset(train_sets, train_labels, max_size=self.dataset.upper_bound-1, source=self.data_source)
+		data.to(self.device)
+		masks.to(self.device)
+		outs.to(self.device)
+
 		test_data, test_masks, test_outs = utils.process_dataset(test_sets, test_labels, max_size=self.dataset.upper_bound-1, source=self.data_source)
+		test_data.to(self.device)
+		test_masks.to(self.device)
+		test_outs.to(self.device)
 
 		LSTM_eloss = self.train_net(data, masks, outs, net="LSTM")
 		LSTM_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="LSTM")
@@ -294,6 +304,9 @@ class Experimenter:
 				fixed_sets, fixed_labels, _, _ = fixed_dataset.unique_task()
 
 			fixed_data, fixed_masks, fixed_outs = utils.process_dataset(fixed_sets, fixed_labels, max_size=fixed_dataset.upper_bound-1, source=self.data_source)
+			fixed_data.to(self.device)
+			fixed_masks.to(self.device)
+			fixed_outs.to(self.device)
 
 			LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
 			deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
@@ -312,6 +325,11 @@ class Experimenter:
 			plt.ylabel('MSE',fontsize=14)
 			plt.savefig('simple_results/fixed_size_curves.png')
 			plt.clf()
+
+			MSE_results = np.concatenate([np.array(LSTM_MSE_fixed).reshape(-1,1),
+				np.array(deepsets_MSE_fixed).reshape(-1,1),
+				np.array(attention_MSE_fixed).reshape(-1,1)], axis=1)
+			np.save("simple_results/MSE_results.npy", MSE_results)
 
 
 if __name__ == "__main__":
@@ -332,9 +350,13 @@ if __name__ == "__main__":
 		weight_decay=args.weight_decay,batch_size=args.batch_size,epochs=args.epochs,seed=args.seed)
 
 	if args.experiment_type == 'simple':
-		if args.suppress_save:
-			simple_training(args.task, save=False)
+		if args.data_source == "OMNI":
+			size_list = np.arange(21,60)
 		else:
-			simple_training(args.task)
+			size_list = np.arange(3,40)
+		if args.suppress_save:
+			simple_training(args.task, fixed_sizes=size_list, save=False)
+		else:
+			simple_training(args.task, fixed_sizes=size_list)
 
 	print('COMPLETED WITHOUT MAJOR ERROR')
