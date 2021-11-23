@@ -10,14 +10,19 @@ from random import shuffle
 def process_dataset(sets, labels,max_size=9,source="MNIST"):
     ''' Sets up data set (forms them with equal sizes and appropriate masks)
     '''
-    _,h,w = sets[0].shape
+    if source == "Toy":
+        h, w = 1, 1
+    else:
+        _,h,w = sets[0].shape
     d = 1
     data = torch.zeros(len(sets),max_size, d, h, w, dtype=torch.float32)
     masks = torch.zeros(len(sets),max_size, dtype=torch.float32)
     outs = torch.zeros(len(sets),1, dtype=torch.float32)
     
     for i in range(len(sets)):
-        if source == "MNIST":
+        if source == "Toy":
+            x = sets[i].unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1).float()
+        elif source == "MNIST":
             x = sets[i].unsqueeze(dim=1).float()/255
         elif source == "OMNI":
             x = sets[i].unsqueeze(dim=1).float()
