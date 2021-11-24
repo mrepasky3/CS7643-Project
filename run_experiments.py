@@ -355,8 +355,8 @@ if __name__ == "__main__":
 		else:
 			size_list = np.arange(3,40)
 		if args.suppress_save:
-			simple_training(args.task, fixed_sizes=size_list, save=False)
+			exp.simple_training(args.task, fixed_sizes=size_list, save=False)
 		else:
-			simple_training(args.task, fixed_sizes=size_list)
+			exp.simple_training(args.task, fixed_sizes=size_list)
 
 	print('COMPLETED WITHOUT MAJOR ERROR')
