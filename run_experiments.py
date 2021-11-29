@@ -70,11 +70,11 @@ class Experimenter:
 
 		Parameters
 		----------
+			data_source : str
+				choices are Toy, MNIST, or OMNI
 			max_size : int
 				maximum size of a set, if None default
 				to random upper bound on set size
-			data_source : str
-				choices are Toy, MNIST, or OMNI
 			fixed_size : bool
 				if True, each set has the same
 				number of elements
@@ -152,20 +152,20 @@ class Experimenter:
 			losses = []
 			for i in tqdm(range(len(bd))):
 				if net == "LSTM":
-					LSTM_optim.zero_grad()
-					loss = LSTM_network.compute_loss(bd[i],bm[i],bo[i])
+					self.LSTM_optim.zero_grad()
+					loss = self.LSTM_network.compute_loss(bd[i],bm[i],bo[i])
 					loss.backward()
-					LSTM_optim.step()
+					self.LSTM_optim.step()
 				elif net == "DS":
-					deepsets_optim.zero_grad()
-					loss = deepsets_network.compute_loss(bd[i],bm[i],bo[i])
+					self.deepsets_optim.zero_grad()
+					loss = self.deepsets_network.compute_loss(bd[i],bm[i],bo[i])
 					loss.backward()
-					deepsets_optim.step()
+					self.deepsets_optim.step()
 				elif net == "ATT":
-					attention_optim.zero_grad()
-					loss = attention_network.compute_loss(bd[i],bm[i],bo[i])
+					self.attention_optim.zero_grad()
+					loss = self.attention_network.compute_loss(bd[i],bm[i],bo[i])
 					loss.backward()
-					attention_optim.step()
+					self.attention_optim.step()
 
 				losses.append(loss.item())
 			print('Epoch %d: loss = %1.3e'%(epoch+1,np.mean(losses)))
@@ -196,24 +196,24 @@ class Experimenter:
 				MSE of net on testing set
 		"""
 		if net == "LSTM":
-			LSTM_network.eval()
-			preds = LSTM_network(test_data, test_masks)
-			MSE = ((pred-test_outs)**2).mean()
-			LSTM_network.train()
+			self.LSTM_network.eval()
+			preds = self.LSTM_network(test_data, test_masks)
+			MSE = ((preds-test_outs)**2).mean()
+			self.LSTM_network.train()
 		elif net == "DS":
-			deepsets_network.eval()
-			preds = deepsets_network(test_data, test_masks)
-			MSE = ((pred-test_outs)**2).mean()
-			deepsets_network.train()
+			self.deepsets_network.eval()
+			preds = self.deepsets_network(test_data, test_masks)
+			MSE = ((preds-test_outs)**2).mean()
+			self.deepsets_network.train()
 		elif net == "ATT":
-			attention_network.eval()
-			preds = attention_network(test_data, test_masks)
-			MSE = ((pred-test_outs)**2).mean()
-			attention_network.train()
+			self.attention_network.eval()
+			preds = self.attention_network(test_data, test_masks)
+			MSE = ((preds-test_outs)**2).mean()
+			self.attention_network.train()
 		return MSE
 
 
-	def simple_training(self, task, fixed_sizes, save=True):
+	def simple_training(self, task, fixed_sizes, savepath=None):
 		"""
 		Trains the networks on the same dataset to perform a task,
 		then visualize on various fixed-sized sets.
@@ -224,8 +224,8 @@ class Experimenter:
 				indicator for the training task
 			fixed_sizes : list of int
 				fixed set sizes to evaluate upon
-			save : bool
-				whether or not to save the results
+			savepath : bool
+				directory to save the results
 
 		Returns
 		-------
@@ -233,8 +233,13 @@ class Experimenter:
 				values of loss after each epoch
 		"""
 
-		if save and not os.path.exists("simple_results"):
-			os.path.mkdir("simple_results")
+		if savepath is not None:
+			if not os.path.exists("simple_results"):
+				os.mkdir("simple_results")
+			savepath = "simple_results/"+savepath
+			if not os.path.exists(savepath):
+				os.mkdir(savepath)
+
 
 		if task == 'sum':
 			train_sets, train_labels, test_sets, test_labels = self.dataset.sum_task()
@@ -249,12 +254,12 @@ class Experimenter:
 		elif task == 'unique':
 			train_sets, train_labels, test_sets, test_labels = self.dataset.unique_task()
 
-		data, masks, outs = utils.process_dataset(train_sets, train_labels, max_size=self.dataset.upper_bound-1, source=self.data_source)
+		data, masks, outs = utils.process_dataset(train_sets, train_labels, max_size=self.dataset.upper_bound, source=self.data_source)
 		data.to(self.device)
 		masks.to(self.device)
 		outs.to(self.device)
 
-		test_data, test_masks, test_outs = utils.process_dataset(test_sets, test_labels, max_size=self.dataset.upper_bound-1, source=self.data_source)
+		test_data, test_masks, test_outs = utils.process_dataset(test_sets, test_labels, max_size=self.dataset.upper_bound, source=self.data_source)
 		test_data.to(self.device)
 		test_masks.to(self.device)
 		test_outs.to(self.device)
@@ -268,26 +273,30 @@ class Experimenter:
 		attention_eloss = self.train_net(data, masks, outs, net="ATT")
 		attention_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="ATT")
 
-		if save:
-			plt.figure(figsize=(6,5))
-			plt.semilogy(LSTM_eloss,'o-', label="LSTM (Test MSE {:.2f})".format(LSTM_test_MSE))
-			plt.semilogy(deepsets_eloss,'o-', label="Deep Sets (Test MSE {:.2f})".format(deepsets_test_MSE))
-			plt.semilogy(attention_eloss,'o-', label="Self Attention (Test MSE {:.2f})".format(attention_test_MSE))
+		if savepath is not None:
+			plt.figure(figsize=(9,7))
+			plt.plot(LSTM_eloss)
+			plt.scatter(np.arange(len(LSTM_eloss)),LSTM_eloss, marker='x', label="LSTM (Test MSE {:.2f})".format(LSTM_test_MSE))
+			plt.plot(deepsets_eloss)
+			plt.scatter(np.arange(len(deepsets_eloss)),deepsets_eloss, marker='x', label="Deep Sets (Test MSE {:.2f})".format(deepsets_test_MSE))
+			plt.plot(attention_eloss)
+			plt.scatter(np.arange(len(attention_eloss)),attention_eloss, marker='x', label="Self Attention (Test MSE {:.2f})".format(attention_test_MSE))
+			plt.yscale('log')
 			plt.legend(fontsize=14)
 			plt.xlabel('Epoch',fontsize=14)
 			plt.ylabel('Loss',fontsize=14)
-			plt.savefig('simple_results/training_curves.png')
+			plt.savefig(savepath+'/training_curves.png')
 			plt.clf()
 
 		LSTM_MSE_fixed = []
 		deepsets_MSE_fixed = []
 		attention_MSE_fixed = []
 		for size in fixed_sizes:
-			if data_source == "Toy":
+			if self.data_source == "Toy":
 				fixed_dataset = SetsToy(max_size=size, fixed_size=True)
-			elif data_source == "MNIST":
+			elif self.data_source == "MNIST":
 				fixed_dataset = SetsMNIST(max_size=size, fixed_size=True)
-			elif data_source == "OMNI":
+			elif self.data_source == "OMNI":
 				fixed_dataset = SetsOmniglot(max_size=size, fixed_size=True)
 
 			if task == 'sum':
@@ -303,7 +312,7 @@ class Experimenter:
 			elif task == 'unique':
 				fixed_sets, fixed_labels, _, _ = fixed_dataset.unique_task()
 
-			fixed_data, fixed_masks, fixed_outs = utils.process_dataset(fixed_sets, fixed_labels, max_size=fixed_dataset.upper_bound-1, source=self.data_source)
+			fixed_data, fixed_masks, fixed_outs = utils.process_dataset(fixed_sets, fixed_labels, max_size=fixed_dataset.upper_bound, source=self.data_source)
 			fixed_data.to(self.device)
 			fixed_masks.to(self.device)
 			fixed_outs.to(self.device)
@@ -312,24 +321,25 @@ class Experimenter:
 			deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
 			attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
 
-		if save:
-			plt.figure(figsize=(6,5))
-			plt.plot(fixed_sizes, LSTM_MSE_fixed)
-			plt.scatter(fixed_sizes, LSTM_MSE_fixed, marker='x', label="LSTM")
-			plt.plot(fixed_sizes, deepsets_MSE_fixed)
-			plt.scatter(fixed_sizes, deepsets_MSE_fixed, marker='x', label="Deep Sets")
-			plt.plot(fixed_sizes, attention_MSE_fixed)
-			plt.scatter(fixed_sizes, attention_MSE_fixed, marker='x', label="Self Attention")
+		if savepath is not None:
+			plt.figure(figsize=(9,7))
+			plt.plot(fixed_sizes, torch.tensor(LSTM_MSE_fixed).detach())
+			plt.scatter(fixed_sizes, torch.tensor(LSTM_MSE_fixed).detach(), marker='x', label="LSTM")
+			plt.plot(fixed_sizes, torch.tensor(deepsets_MSE_fixed).detach())
+			plt.scatter(fixed_sizes, torch.tensor(deepsets_MSE_fixed).detach(), marker='x', label="Deep Sets")
+			plt.plot(fixed_sizes, torch.tensor(attention_MSE_fixed).detach())
+			plt.scatter(fixed_sizes, torch.tensor(attention_MSE_fixed).detach(), marker='x', label="Self Attention")
 			plt.legend(fontsize=14)
 			plt.xlabel('Set Size',fontsize=14)
 			plt.ylabel('MSE',fontsize=14)
-			plt.savefig('simple_results/fixed_size_curves.png')
+			plt.savefig(savepath+'/fixed_size_curves.png')
 			plt.clf()
 
-			MSE_results = np.concatenate([np.array(LSTM_MSE_fixed).reshape(-1,1),
-				np.array(deepsets_MSE_fixed).reshape(-1,1),
-				np.array(attention_MSE_fixed).reshape(-1,1)], axis=1)
-			np.save("simple_results/MSE_results.npy", MSE_results)
+			MSE_results = np.concatenate([fixed_sizes.reshape(-1,1),
+				np.array(torch.tensor(LSTM_MSE_fixed).detach()).reshape(-1,1),
+				np.array(torch.tensor(deepsets_MSE_fixed).detach()).reshape(-1,1),
+				np.array(torch.tensor(attention_MSE_fixed).detach()).reshape(-1,1)], axis=1)
+			np.save(savepath+"/MSE_results.npy", MSE_results)
 
 
 if __name__ == "__main__":
@@ -353,10 +363,10 @@ if __name__ == "__main__":
 		if args.data_source == "OMNI":
 			size_list = np.arange(21,60)
 		else:
-			size_list = np.arange(3,40)
+			size_list = np.arange(2,60)
 		if args.suppress_save:
-			exp.simple_training(args.task, fixed_sizes=size_list, save=False)
-		else:
 			exp.simple_training(args.task, fixed_sizes=size_list)
+		else:
+			exp.simple_training(args.task, fixed_sizes=size_list, savepath=args.data_source+"_"+args.task)
 
 	print('COMPLETED WITHOUT MAJOR ERROR')
