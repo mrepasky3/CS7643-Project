@@ -198,17 +198,17 @@ class Experimenter:
 		if net == "LSTM":
 			self.LSTM_network.eval()
 			preds = self.LSTM_network(test_data, test_masks)
-			MSE = ((preds-test_outs)**2).mean()
+			MSE = ((preds.detach()-test_outs)**2).mean()
 			self.LSTM_network.train()
 		elif net == "DS":
 			self.deepsets_network.eval()
 			preds = self.deepsets_network(test_data, test_masks)
-			MSE = ((preds-test_outs)**2).mean()
+			MSE = ((preds.detach()-test_outs)**2).mean()
 			self.deepsets_network.train()
 		elif net == "ATT":
 			self.attention_network.eval()
 			preds = self.attention_network(test_data, test_masks)
-			MSE = ((preds-test_outs)**2).mean()
+			MSE = ((preds.detach()-test_outs)**2).mean()
 			self.attention_network.train()
 		return MSE
 
