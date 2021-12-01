@@ -314,13 +314,22 @@ class Experimenter:
 			torch.cuda.empty_cache()
 
 		LSTM_eloss = self.train_net(data, masks, outs, net="LSTM")
-		LSTM_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="LSTM")
+		if self.data_source == "OMNI":
+			LSTM_test_MSE = self.report_MSE_OMNI(test_data, test_masks, test_outs, net="LSTM")
+		else:
+			LSTM_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="LSTM")
 
 		deepsets_eloss = self.train_net(data, masks, outs, net="DS")
-		deepsets_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="DS")
+		if self.data_source == "OMNI":
+			deepsets_test_MSE = self.report_MSE_OMNI(test_data, test_masks, test_outs, net="DS")
+		else:
+			deepsets_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="DS")
 
 		attention_eloss = self.train_net(data, masks, outs, net="ATT")
-		attention_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="ATT")
+		if self.data_source == "OMNI":
+			attention_test_MSE = self.report_MSE_OMNI(test_data, test_masks, test_outs, net="ATT")
+		else:
+			attention_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="ATT")
 
 		if savepath is not None:
 			plt.figure(figsize=(9,7))
