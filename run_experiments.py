@@ -374,7 +374,7 @@ if __name__ == "__main__":
 
 	if args.experiment_type == 'simple':
 		if args.data_source == "OMNI":
-			size_list = np.arange(21,60)
+			size_list = np.arange(21,40)
 		else:
 			size_list = np.arange(2,60)
 		if args.suppress_save:
