@@ -239,18 +239,18 @@ class Experimenter:
 		for i in tqdm(range(len(bd))):
 			if net == "LSTM":
 				self.LSTM_network.eval()
-				preds = self.LSTM_network(test_data, test_masks)
-				MSE.append(((preds.detach()-test_outs)**2).mean())
+				preds = self.LSTM_network(bd[i], bm[i])
+				MSE.append(((preds.detach()-bo[i])**2).mean())
 				self.LSTM_network.train()
 			elif net == "DS":
 				self.deepsets_network.eval()
-				preds = self.deepsets_network(test_data, test_masks)
-				MSE.append(((preds.detach()-test_outs)**2).mean())
+				preds = self.deepsets_network(bd[i], bm[i])
+				MSE.append(((preds.detach()-bo[i])**2).mean())
 				self.deepsets_network.train()
 			elif net == "ATT":
 				self.attention_network.eval()
-				preds = self.attention_network(test_data, test_masks)
-				MSE.append(((preds.detach()-test_outs)**2).mean())
+				preds = self.attention_network(bd[i], bm[i])
+				MSE.append(((preds.detach()-bo[i])**2).mean())
 				self.attention_network.train()
 		return np.mean(MSE)
 
