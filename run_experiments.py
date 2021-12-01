@@ -213,6 +213,48 @@ class Experimenter:
 		return MSE
 
 
+	def report_MSE_OMNI(self, test_data, test_masks, test_outs, net):
+		"""
+		Choose a neural network to evaluate on testing data.
+
+		Parameters
+		----------
+			test_data : torch.Tensor
+				tensor of training data
+			test_masks : torch.Tensor
+				indicators for non-present instances
+				in a set
+			test_outs : torch.Tensor
+				labels for the training data
+			net : str
+				choices are LSTM, DS, and ATT
+
+		Returns
+		-------
+			MSE: float
+				MSE of net on testing set
+		"""
+		bd, bm, bo = utils.batch_data(test_data,test_masks,test_outs,bs=self.batch_size)
+		MSE = []
+		for i in tqdm(range(len(bd))):
+			if net == "LSTM":
+				self.LSTM_network.eval()
+				preds = self.LSTM_network(test_data, test_masks)
+				MSE.append(((preds.detach()-test_outs)**2).mean())
+				self.LSTM_network.train()
+			elif net == "DS":
+				self.deepsets_network.eval()
+				preds = self.deepsets_network(test_data, test_masks)
+				MSE.append(((preds.detach()-test_outs)**2).mean())
+				self.deepsets_network.train()
+			elif net == "ATT":
+				self.attention_network.eval()
+				preds = self.attention_network(test_data, test_masks)
+				MSE.append(((preds.detach()-test_outs)**2).mean())
+				self.attention_network.train()
+		return np.mean(MSE)
+
+
 	def simple_training(self, task, fixed_sizes, savepath=None):
 		"""
 		Trains the networks on the same dataset to perform a task,
@@ -324,9 +366,14 @@ class Experimenter:
 			fixed_masks = fixed_masks.to(self.device)
 			fixed_outs = fixed_outs.to(self.device)
 
-			LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
-			deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
-			attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
+			if self.data_source == "OMNI":
+				LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
+				deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
+				attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
+			else:
+				LSTM_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
+				deepsets_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="DS"))
+				attention_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="ATT"))
 
 			if self.device == "cuda:0":
 				del fixed_data
