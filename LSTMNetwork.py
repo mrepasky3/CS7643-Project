@@ -50,7 +50,7 @@ class ImageLSTMNetwork(nn.Module):
         x = self.embedding(x).view(bs,set_size,-1)
 
         packed_x = torch.nn.utils.rnn.pack_padded_sequence(x,
-                        lengths = mask.sum(axis=1,dtype=torch.int),
+                        lengths = mask.sum(axis=1,dtype=torch.int).cpu(),
                         batch_first=True,
                         enforce_sorted=False)
         packed_out, (hidden, cell) = self.recurrent(packed_x)

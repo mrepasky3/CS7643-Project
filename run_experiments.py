@@ -255,14 +255,14 @@ class Experimenter:
 			train_sets, train_labels, test_sets, test_labels = self.dataset.unique_task()
 
 		data, masks, outs = utils.process_dataset(train_sets, train_labels, max_size=self.dataset.upper_bound, source=self.data_source)
-		data.to(self.device)
-		masks.to(self.device)
-		outs.to(self.device)
+		data = data.to(self.device)
+		masks = masks.to(self.device)
+		outs = outs.to(self.device)
 
 		test_data, test_masks, test_outs = utils.process_dataset(test_sets, test_labels, max_size=self.dataset.upper_bound, source=self.data_source)
-		test_data.to(self.device)
-		test_masks.to(self.device)
-		test_outs.to(self.device)
+		test_data = test_data.to(self.device)
+		test_masks = test_masks.to(self.device)
+		test_outs = test_outs.to(self.device)
 
 		LSTM_eloss = self.train_net(data, masks, outs, net="LSTM")
 		LSTM_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="LSTM")
@@ -313,9 +313,9 @@ class Experimenter:
 				fixed_sets, fixed_labels, _, _ = fixed_dataset.unique_task()
 
 			fixed_data, fixed_masks, fixed_outs = utils.process_dataset(fixed_sets, fixed_labels, max_size=fixed_dataset.upper_bound, source=self.data_source)
-			fixed_data.to(self.device)
-			fixed_masks.to(self.device)
-			fixed_outs.to(self.device)
+			fixed_data = fixed_data.to(self.device)
+			fixed_masks = fixed_masks.to(self.device)
+			fixed_outs = fixed_outs.to(self.device)
 
 			LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
 			deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
