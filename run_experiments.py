@@ -263,6 +263,13 @@ class Experimenter:
 		test_data = test_data.to(self.device)
 		test_masks = test_masks.to(self.device)
 		test_outs = test_outs.to(self.device)
+		
+		if self.device == "cuda:0":
+			del train_sets
+			del train_labels
+			del test_sets
+			del test_labels
+			torch.cuda.empty_cache()
 
 		LSTM_eloss = self.train_net(data, masks, outs, net="LSTM")
 		LSTM_test_MSE = self.report_MSE(test_data, test_masks, test_outs, net="LSTM")
@@ -320,6 +327,12 @@ class Experimenter:
 			LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
 			deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
 			attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
+
+			if self.device == "cuda:0":
+				del fixed_data
+				del fixed_masks
+				del fixed_outs
+				torch.cuda.empty_cache()
 
 		if savepath is not None:
 			plt.figure(figsize=(9,7))
