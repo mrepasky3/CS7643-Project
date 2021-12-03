@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 from random import shuffle
 import matplotlib.pyplot as plt
+import arrow
 from tqdm.notebook import tqdm
 from dataset_prep import SetsToy, SetsMNIST, SetsOmniglot
 from AttentionNetwork import ImageAttentionNetwork
@@ -24,7 +25,7 @@ parser.add_argument('--batch_size', type=int, default=200)
 parser.add_argument('--epochs', type=int, default=50)
 parser.add_argument('--seed', type=int, default=0)
 
-parser.add_argument('--experiment_type', type=str, choices=["simple","else"])
+parser.add_argument('--experiment_type', type=str, choices=["simple","times"])
 parser.add_argument('--suppress_save', action="store_true")
 
 # simple training arguments
@@ -174,6 +175,56 @@ class Experimenter:
 		return elosses
 
 
+	def report_train_time(self, data, masks, outs, net):
+		"""
+		Choose a neural network to train on given data
+		for a single epoch and return the time.
+
+		Parameters
+		----------
+			data : torch.Tensor
+				tensor of training data
+			masks : torch.Tensor
+				indicators for non-present instances
+				in a set
+			outs : torch.Tensor
+				labels for the training data
+			net : str
+				choices are LSTM, DS, and ATT
+
+		Returns
+		-------
+			time: float
+				duration in seconds of training
+				for the single epoch
+		"""
+
+		start_time = arrow.now()
+
+		bd, bm, bo = utils.batch_data(data,masks,outs,bs=self.batch_size)
+		losses = []
+		for i in tqdm(range(len(bd))):
+			if net == "LSTM":
+				self.LSTM_optim.zero_grad()
+				loss = self.LSTM_network.compute_loss(bd[i],bm[i],bo[i])
+				loss.backward()
+				self.LSTM_optim.step()
+			elif net == "DS":
+				self.deepsets_optim.zero_grad()
+				loss = self.deepsets_network.compute_loss(bd[i],bm[i],bo[i])
+				loss.backward()
+				self.deepsets_optim.step()
+			elif net == "ATT":
+				self.attention_optim.zero_grad()
+				loss = self.attention_network.compute_loss(bd[i],bm[i],bo[i])
+				loss.backward()
+				self.attention_optim.step()
+
+			losses.append(loss.item())
+
+		return (arrow.now() - start_time).total_seconds()
+
+
 	def report_MSE(self, test_data, test_masks, test_outs, net):
 		"""
 		Choose a neural network to evaluate on testing data.
@@ -268,11 +319,6 @@ class Experimenter:
 				fixed set sizes to evaluate upon
 			savepath : bool
 				directory to save the results
-
-		Returns
-		-------
-			elosses: list of float
-				values of loss after each epoch
 		"""
 
 		if savepath is not None:
@@ -413,6 +459,85 @@ class Experimenter:
 			np.save(savepath+"/MSE_results.npy", MSE_results)
 
 
+	def time_experiments(self, task, fixed_sizes, savepath=None):
+		"""
+		Trains the networks various fixed-sized sets for one
+		epoch and visualize the duration of one epoch for each
+		of the fixed set sizes.
+
+		Parameters
+		----------
+			task : str
+				indicator for the training task
+			fixed_sizes : list of int
+				fixed set sizes to evaluate upon
+			savepath : bool
+				directory to save the results
+		"""
+
+		if savepath is not None:
+			if not os.path.exists("simple_results"):
+				os.mkdir("simple_results")
+			savepath = "simple_results/"+savepath
+			if not os.path.exists(savepath):
+				os.mkdir(savepath)
+
+		LSTM_times = []
+		deepsets_times = []
+		attention_times = []
+		for size in fixed_sizes:
+			if self.data_source == "Toy":
+				fixed_dataset = SetsToy(max_size=size, fixed_size=True)
+			elif self.data_source == "MNIST":
+				fixed_dataset = SetsMNIST(max_size=size, fixed_size=True)
+			elif self.data_source == "OMNI":
+				fixed_dataset = SetsOmniglot(max_size=size, fixed_size=True)
+
+			if task == 'sum':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.sum_task()
+			elif task == 'max':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.max_task()
+			elif task == 'range':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.range_task()
+			elif task == 'mode':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.mode_task()
+			elif task == 'product':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.product_task()
+			elif task == 'unique':
+				fixed_sets, fixed_labels, _, _ = fixed_dataset.unique_task()
+
+			fixed_data, fixed_masks, fixed_outs = utils.process_dataset(fixed_sets, fixed_labels, max_size=fixed_dataset.upper_bound, source=self.data_source)
+			fixed_data = fixed_data.to(self.device)
+			fixed_masks = fixed_masks.to(self.device)
+			fixed_outs = fixed_outs.to(self.device)
+
+			LSTM_times.append(self.report_train_time(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
+			deepsets_times.append(self.report_train_time(fixed_data, fixed_masks, fixed_outs, net="DS"))
+			attention_times.append(self.report_train_time(fixed_data, fixed_masks, fixed_outs, net="ATT"))
+
+			if self.device == "cuda:0":
+				del fixed_sets
+				del fixed_labels
+				del fixed_data
+				del fixed_masks
+				del fixed_outs
+				torch.cuda.empty_cache()
+
+		if savepath is not None:
+			plt.figure(figsize=(9,7))
+			plt.plot(fixed_sizes, LSTM_times)
+			plt.scatter(fixed_sizes, LSTM_times, marker='x', label="LSTM")
+			plt.plot(fixed_sizes, deepsets_times)
+			plt.scatter(fixed_sizes, deepsets_times, marker='x', label="Deep Sets")
+			plt.plot(fixed_sizes, attention_times)
+			plt.scatter(fixed_sizes, attention_times, marker='x', label="Self Attention")
+			plt.legend(fontsize=14)
+			plt.xlabel('Set Size',fontsize=14)
+			plt.ylabel('MSE',fontsize=14)
+			plt.savefig(savepath+'/train_time_curves.png')
+			plt.clf()
+
+
 if __name__ == "__main__":
 	args = parser.parse_args()
 
@@ -439,5 +564,15 @@ if __name__ == "__main__":
 			exp.simple_training(args.task, fixed_sizes=size_list)
 		else:
 			exp.simple_training(args.task, fixed_sizes=size_list, savepath=args.data_source+"_"+args.task)
+
+	elif args.experiment_type == 'times':
+		if args.data_source == "OMNI":
+			size_list = np.arange(21,40)
+		else:
+			size_list = np.arange(2,60)
+		if args.suppress_save:
+			exp.time_experiments(args.task, fixed_sizes=size_list)
+		else:
+			exp.time_experiments(args.task, fixed_sizes=size_list, savepath=args.data_source+"_"+args.task)
 
 	print('COMPLETED WITHOUT MAJOR ERROR')
