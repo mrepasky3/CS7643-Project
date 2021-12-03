@@ -234,7 +234,7 @@ class Experimenter:
 			MSE: float
 				MSE of net on testing set
 		"""
-		bd, bm, bo = utils.batch_data(test_data,test_masks,test_outs,bs=self.batch_size)
+		bd, bm, bo = utils.batch_data(test_data,test_masks,test_outs,bs=10)
 		MSE = []
 		for i in tqdm(range(len(bd))):
 			if net == "LSTM":
@@ -252,7 +252,7 @@ class Experimenter:
 				preds = self.attention_network(bd[i], bm[i])
 				MSE.append(((preds.detach()-bo[i])**2).mean())
 				self.attention_network.train()
-		return np.mean(MSE)
+		return torch.tensor(MSE).mean()
 
 
 	def simple_training(self, task, fixed_sizes, savepath=None):
@@ -376,15 +376,17 @@ class Experimenter:
 			fixed_outs = fixed_outs.to(self.device)
 
 			if self.data_source == "OMNI":
-				LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
-				deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
-				attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
-			else:
 				LSTM_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
 				deepsets_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="DS"))
 				attention_MSE_fixed.append(self.report_MSE_OMNI(fixed_data, fixed_masks, fixed_outs, net="ATT"))
+			else:
+				LSTM_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="LSTM"))
+				deepsets_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="DS"))
+				attention_MSE_fixed.append(self.report_MSE(fixed_data, fixed_masks, fixed_outs, net="ATT"))
 
 			if self.device == "cuda:0":
+				del fixed_sets
+				del fixed_labels
 				del fixed_data
 				del fixed_masks
 				del fixed_outs
