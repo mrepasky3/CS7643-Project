@@ -178,7 +178,7 @@ class Experimenter:
 	def report_train_time(self, data, masks, outs, net):
 		"""
 		Choose a neural network to train on given data
-		for a single epoch and return the time.
+		for 10 epochs and return the average time.
 
 		Parameters
 		----------
@@ -195,34 +195,36 @@ class Experimenter:
 		Returns
 		-------
 			time: float
-				duration in seconds of training
-				for the single epoch
+				average duration in seconds of training
+				for a single epoch
 		"""
+		times = []
+		for _ in range(10):
+			start_time = arrow.now()
 
-		start_time = arrow.now()
+			bd, bm, bo = utils.batch_data(data,masks,outs,bs=self.batch_size)
+			losses = []
+			for i in tqdm(range(len(bd))):
+				if net == "LSTM":
+					self.LSTM_optim.zero_grad()
+					loss = self.LSTM_network.compute_loss(bd[i],bm[i],bo[i])
+					loss.backward()
+					self.LSTM_optim.step()
+				elif net == "DS":
+					self.deepsets_optim.zero_grad()
+					loss = self.deepsets_network.compute_loss(bd[i],bm[i],bo[i])
+					loss.backward()
+					self.deepsets_optim.step()
+				elif net == "ATT":
+					self.attention_optim.zero_grad()
+					loss = self.attention_network.compute_loss(bd[i],bm[i],bo[i])
+					loss.backward()
+					self.attention_optim.step()
 
-		bd, bm, bo = utils.batch_data(data,masks,outs,bs=self.batch_size)
-		losses = []
-		for i in tqdm(range(len(bd))):
-			if net == "LSTM":
-				self.LSTM_optim.zero_grad()
-				loss = self.LSTM_network.compute_loss(bd[i],bm[i],bo[i])
-				loss.backward()
-				self.LSTM_optim.step()
-			elif net == "DS":
-				self.deepsets_optim.zero_grad()
-				loss = self.deepsets_network.compute_loss(bd[i],bm[i],bo[i])
-				loss.backward()
-				self.deepsets_optim.step()
-			elif net == "ATT":
-				self.attention_optim.zero_grad()
-				loss = self.attention_network.compute_loss(bd[i],bm[i],bo[i])
-				loss.backward()
-				self.attention_optim.step()
+				losses.append(loss.item())
 
-			losses.append(loss.item())
-
-		return (arrow.now() - start_time).total_seconds()
+			times.append((arrow.now() - start_time).total_seconds())
+		return np.array(times).mean()
 
 
 	def report_MSE(self, test_data, test_masks, test_outs, net):
@@ -533,7 +535,7 @@ class Experimenter:
 			plt.scatter(fixed_sizes, attention_times, marker='x', label="Self Attention")
 			plt.legend(fontsize=14)
 			plt.xlabel('Set Size',fontsize=14)
-			plt.ylabel('MSE',fontsize=14)
+			plt.ylabel('Train Time',fontsize=14)
 			plt.savefig(savepath+'/train_time_curves.png')
 			plt.clf()
 
