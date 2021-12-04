@@ -595,7 +595,7 @@ class Experimenter:
 			if time_type == 'epoch':
 				plt.ylabel('Train Time',fontsize=14)
 				plt.savefig(savepath+'/train_time_curves.png')
-			elif time_type == 'epoch':
+			elif time_type == 'batch':
 				plt.ylabel('Batch Train Time',fontsize=14)
 				plt.savefig(savepath+'/batch_time_curves.png')
 			plt.clf()
